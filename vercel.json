@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build --filter=@trak-watch/web...",
+  "buildCommand": "cd apps/web && npm run build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "npm install --workspaces --include-workspace-root",
   "framework": "vite"

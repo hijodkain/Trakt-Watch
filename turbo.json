@@ -4,23 +4,23 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "build/**"],
-      "cache": true
+      "cache": false
     },
     "lint": {
       "outputs": [],
-      "cache": true
+      "cache": false
     },
     "typecheck": {
       "outputs": [],
-      "cache": true
+      "cache": false
     },
     "test": {
       "outputs": ["coverage/**"],
-      "cache": true
+      "cache": false
     },
     "test:coverage": {
       "outputs": ["coverage/**"],
-      "cache": true
+      "cache": false
     },
     "dev": {
       "cache": false,
