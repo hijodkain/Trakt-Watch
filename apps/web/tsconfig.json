@@ -17,14 +17,11 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@trak-watch/shared/*": ["../../packages/shared/dist/*"],
-      "@trak-watch/ui/*": ["../../packages/ui/src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],
   "references": [
-    { "path": "./tsconfig.node.json" },
-    { "path": "../../packages/shared" }
+    { "path": "./tsconfig.node.json" }
   ]
 }
