@@ -31,7 +31,7 @@ export function HeroBanner({ media, onPlayTrailer, onAddToList, className }: Her
     ? `${media.episode_run_time[0]}m`
     : null;
 
-  const genres = media.genres?.slice(0, 3).map(g => g.name).join(' · ');
+  const genres = media.genres?.slice(0, 3).map((g: { name: string }) => g.name).join(' · ');
 
   return (
     <div
@@ -126,7 +126,7 @@ export function HeroBanner({ media, onPlayTrailer, onAddToList, className }: Her
 
             {/* Actions */}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-              {onPlayTrailer && media.videos?.some(v => v.site === 'YouTube' && v.iso_639_1 === 'es') && (
+              {onPlayTrailer && media.videos?.some((v: { site: string; iso_639_1: string }) => v.site === 'YouTube' && v.iso_639_1 === 'es') && (
                 <Button size="lg" onClick={onPlayTrailer} className="gap-2">
                   <Play className="h-5 w-5" />
                   Ver tráiler

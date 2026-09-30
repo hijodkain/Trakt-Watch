@@ -30,7 +30,7 @@ const sizeClasses = {
   xl: 'w-48',
 };
 
-const aspectRatios = {
+const aspectRatios: Record<MediaType, string> = {
   movie: 'aspect-[2/3]',
   tv: 'aspect-[2/3]',
 };
