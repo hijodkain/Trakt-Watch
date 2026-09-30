@@ -9,7 +9,7 @@ on:
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
-  NODE_VERSION: '22'
+  NODE_VERSION: '26'
 
 jobs:
   lint-typecheck:
