@@ -1,0 +1,32 @@
+{
+  "name": "@trak-watch/plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc && esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --external:@supabase/supabase-js",
+    "lint": "eslint . --ext ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "hono": "^4.4.0",
+    "zod": "^3.23.0",
+    "@supabase/supabase-js": "^2.44.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsx": "^4.15.0",
+    "esbuild": "^0.21.0",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.14.0",
+    "eslint": "^8.57.0"
+  }
+}

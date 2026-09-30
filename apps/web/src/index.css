@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 10 10 15;
+    --bg-elevated: 20 20 30;
+    --bg-card: 26 26 36;
+    --fg: 245 245 245;
+    --fg-muted: 139 139 154;
+    --fg-subtle: 90 90 106;
+    --accent: 229 9 20;
+    --accent-hover: 244 6 18;
+    --border: 42 42 58;
+    --border-light: 58 58 74;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-bg text-fg;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection {
+    @apply bg-accent/30 text-fg;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border-light rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-fg-subtle;
+  }
+}
+
+@layer components {
+  .poster-card {
+    @apply relative overflow-hidden rounded-xl bg-bg-card transition-all duration-300;
+  }
+
+  .poster-card:hover {
+    @apply shadow-poster-hover scale-[1.02] z-10;
+  }
+
+  .poster-image {
+    @apply w-full h-auto object-cover transition-opacity duration-300;
+  }
+
+  .poster-overlay {
+    @apply absolute inset-0 bg-gradient-to-t from-bg via-bg/50 to-transparent opacity-0 transition-opacity duration-300;
+  }
+
+  .poster-card:hover .poster-overlay {
+    @apply opacity-100;
+  }
+
+  .poster-actions {
+    @apply absolute bottom-0 left-0 right-0 p-4 transform translate-y-full opacity-0 transition-all duration-300;
+  }
+
+  .poster-card:hover .poster-actions {
+    @apply translate-y-0 opacity-100;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-fg bg-accent rounded-lg hover:bg-accent-hover transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-fg bg-bg-elevated border border-border rounded-lg hover:bg-bg-card hover:border-border-light transition-all focus:outline-none focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-bg disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-fg-muted hover:text-fg hover:bg-bg-elevated rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-bg disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input-base {
+    @apply w-full px-4 py-2.5 text-sm text-fg bg-bg-elevated border border-border rounded-lg placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .card-base {
+    @apply bg-bg-elevated border border-border rounded-xl p-6;
+  }
+
+  .section-title {
+    @apply text-xl font-bold text-fg tracking-tight;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-fg to-fg-muted;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-in {
+    animation: fade-in 300ms ease-out, slide-up 300ms ease-out;
+  }
+
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .delay-300 {
+    animation-delay: 300ms;
+  }
+}
