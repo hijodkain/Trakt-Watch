@@ -64,8 +64,7 @@
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-hover-card": "^1.1.0",
-    "class-variance-authority": "^0.7.0",
-    "@trak-watch/shared": "workspace:*"
+    "class-variance-authority": "^0.7.0"
   },
   "devDependencies": {
     "react": "^18.3.0",
