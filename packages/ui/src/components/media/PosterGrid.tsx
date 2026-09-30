@@ -2,7 +2,7 @@ import * as React from 'react';
 import { cn } from '../../utils';
 import { PosterCard } from './PosterCard';
 import { Skeleton } from '../primitives/Skeleton';
-import type { MediaSummary } from '@trak-watch/shared/types';
+import type { MediaSummary } from '../../types';
 
 interface PosterGridProps {
   items: MediaSummary[];

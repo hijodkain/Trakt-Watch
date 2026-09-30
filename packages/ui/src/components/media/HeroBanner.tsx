@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Play, Info } from 'lucide-react';
 import { cn } from '../../utils';
 import { Button } from '../primitives/Button';
-import type { MediaDetail } from '@trak-watch/shared/types';
+import type { MediaDetail } from '../../types';
 
 interface HeroBannerProps {
   media: MediaDetail;

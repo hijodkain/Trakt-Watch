@@ -5,7 +5,7 @@ import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../primitives/Tooltip';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../primitives/DropdownMenu';
-import type { MediaSummary, MediaType, ItemStatus } from '@trak-watch/shared/types';
+import type { MediaSummary, MediaType, ItemStatus } from '../../types';
 
 interface PosterCardProps {
   media: MediaSummary;
