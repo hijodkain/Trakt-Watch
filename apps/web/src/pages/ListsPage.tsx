@@ -182,7 +182,7 @@ export function ListsPage() {
                 label="Nombre"
                 placeholder="Ej: Películas de terror, Series para ver en fin de semana..."
                 value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewListName(e.target.value)}
                 required
                 maxLength={100}
               />
@@ -190,7 +190,7 @@ export function ListsPage() {
                 label="Descripción (opcional)"
                 placeholder="Breve descripción de la lista..."
                 value={newListDescription}
-                onChange={(e) => setNewListDescription(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewListDescription(e.target.value)}
                 maxLength={500}
               />
               <div>

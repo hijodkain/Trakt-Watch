@@ -224,19 +224,19 @@ export function ListDetailPage() {
                   <Input
                     label="Nombre"
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
                     required
                   />
                   <Input
                     label="Descripción"
                     value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDescription(e.target.value)}
                   />
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={editPublic}
-                      onChange={(e) => setEditPublic(e.target.checked)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPublic(e.target.checked)}
                       className="rounded border-border text-accent focus:ring-accent"
                     />
                     <span className="text-sm text-fg">Lista pública</span>
