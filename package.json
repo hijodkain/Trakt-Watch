@@ -7,7 +7,6 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=@trak-watch/web",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
