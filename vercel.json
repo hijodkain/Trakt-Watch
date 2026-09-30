@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build --filter=@trak-watch/web...",
+  "buildCommand": "turbo run build --filter=@trak-watch/web...",
   "outputDirectory": "apps/web/dist",
   "installCommand": "npm install --workspaces --include-workspace-root",
   "framework": "vite"
