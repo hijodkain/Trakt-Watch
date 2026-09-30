@@ -1,8 +1,8 @@
-export { Button, buttonVariants } from './Button';
+export { Button, buttonVariants, type ButtonProps } from './Button';
 export { Input } from './Input';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
 export { Avatar, AvatarImage, AvatarFallback } from './Avatar';
-export { Badge, badgeVariants } from './Badge';
+export { Badge, badgeVariants, type BadgeProps } from './Badge';
 export { Skeleton } from './Skeleton';
 export { Toast, ToastViewport, ToastTitle, ToastDescription, ToastClose, ToastAction, ToastProvider } from './Toast';
 export { Toaster, useToast } from './Toaster';
