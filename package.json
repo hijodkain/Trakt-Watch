@@ -7,7 +7,6 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "turbo run build --filter=@trak-watch/web...",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
@@ -36,9 +35,6 @@
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-hover-card": "^1.1.0",
-    "lucide-react": "^0.395.0",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0",
     "date-fns": "^3.6.0",
     "zod": "^3.23.0",
     "@hookform/resolvers": "^3.6.0",

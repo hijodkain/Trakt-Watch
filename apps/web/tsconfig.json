@@ -17,7 +17,9 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@trak-watch/shared/*": ["../../packages/shared/src/*"],
+      "@trak-watch/ui/*": ["../../packages/ui/src/*"]
     }
   },
   "include": ["src"],
