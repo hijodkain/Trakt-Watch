@@ -1,37 +1,24 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { supabase } from '@/features/auth/AuthProvider';
-
-interface SearchResult {
-  id: number;
-  title: string;
-  name: string;
-  media_type: 'movie' | 'tv';
-  poster_path: string | null;
-  release_date: string | null;
-  first_air_date: string | null;
-  vote_average: number;
-  genre_ids: number[];
-}
+import { searchMedia } from '@/lib/tmdb';
+import type { MediaSummary } from '@/types';
 
 interface UseGlobalSearchReturn {
-  results: SearchResult[];
+  results: MediaSummary[];
   isLoading: boolean;
   search: (query: string) => void;
   clearSearch: () => void;
 }
 
 export function useGlobalSearch(): UseGlobalSearchReturn {
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<MediaSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [query, setQuery] = useState('');
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const seqRef = useRef(0);
 
   const search = useCallback((q: string) => {
-    setQuery(q);
-    
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
@@ -47,29 +34,25 @@ export function useGlobalSearch(): UseGlobalSearchReturn {
     }
 
     setIsLoading(true);
+    const seq = ++seqRef.current;
 
     debounceRef.current = setTimeout(async () => {
-      abortControllerRef.current = new AbortController();
-      
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
       try {
-        const { data, error } = await supabase.functions.invoke('tmdb-search', {
-          body: { query: q, language: 'es', page: 1 },
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!abortControllerRef.current?.signal.aborted) {
-          if (error) {
-            console.error('Search error:', error);
-            setResults([]);
-          } else {
-            setResults(data?.results || []);
-          }
-          setIsLoading(false);
+        const data = await searchMedia(q, 1, controller.signal);
+        if (seqRef.current === seq) {
+          setResults(data.results.slice(0, 8));
         }
       } catch (error) {
-        if (!abortControllerRef.current?.signal.aborted) {
+        if ((error as Error)?.name !== 'AbortError') {
           console.error('Search error:', error);
+        }
+        if (seqRef.current === seq) {
           setResults([]);
+        }
+      } finally {
+        if (seqRef.current === seq) {
           setIsLoading(false);
         }
       }
@@ -77,7 +60,7 @@ export function useGlobalSearch(): UseGlobalSearchReturn {
   }, []);
 
   const clearSearch = useCallback(() => {
-    setQuery('');
+    seqRef.current++;
     setResults([]);
     setIsLoading(false);
     if (debounceRef.current) {

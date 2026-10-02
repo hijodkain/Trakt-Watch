@@ -1,8 +1,8 @@
 // Local type definitions for web app (to avoid module resolution issues)
 
 export type MediaType = 'movie' | 'tv';
-export type ListType = 'watchlist' | 'watched' | 'favorites' | 'custom';
-export type ItemStatus = 'to_watch' | 'watching' | 'watched' | 'dropped';
+export type ListType = 'pendientes' | 'favoritas' | 'siguiendo' | 'seguir-viendo' | 'custom';
+export type ItemStatus = 'pendientes' | 'favoritas' | 'siguiendo' | 'seguir-viendo' | 'vistas';
 export type Locale = 'es' | 'en' | 'auto';
 
 export interface Profile {
@@ -40,8 +40,16 @@ export interface ListItem {
   watched_at: string | null;
   sort_order: number;
   title?: string;
+  original_title?: string | null;
+  overview?: string | null;
+  poster_path?: string | null;
+  backdrop_path?: string | null;
   release_date?: string | null;
   first_air_date?: string | null;
+  vote_average?: number;
+  genre_ids?: number[];
+  genres?: Genre[];
+  providers?: string[];
 }
 
 export interface MediaSummary {

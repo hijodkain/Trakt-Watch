@@ -2,25 +2,13 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Film, Tv, Search, Clock, ExternalLink } from 'lucide-react';
+import { Film, Tv, Search, ExternalLink } from 'lucide-react';
 import { cn } from '@trak-watch/ui/utils';
-import { Button } from '@trak-watch/ui/components/primitives/Button';
 import { Skeleton } from '@trak-watch/ui/components/primitives/Skeleton';
-
-interface SearchResult {
-  id: number;
-  title: string;
-  name: string;
-  media_type: 'movie' | 'tv';
-  poster_path: string | null;
-  release_date: string | null;
-  first_air_date: string | null;
-  vote_average: number;
-  genre_ids: number[];
-}
+import type { MediaSummary } from '@/types';
 
 interface SearchResultsDropdownProps {
-  results: SearchResult[];
+  results: MediaSummary[];
   isLoading: boolean;
   query: string;
   onClose: () => void;
@@ -67,8 +55,8 @@ export function SearchResultsDropdown({ results, isLoading, query, onClose }: Se
         <div className="max-h-[50vh] overflow-y-auto">
           {displayResults.map((item, index) => (
             <NavLink
-              key={`${item.media_type}-${item.id}`}
-              to={`/media/${item.media_type}/${item.id}`}
+              key={`${item.media_type}-${item.tmdb_id}`}
+              to={`/media/${item.media_type}/${item.tmdb_id}`}
               className={cn(
                 'flex items-center gap-3 px-4 py-2.5 hover:bg-bg-card transition-colors border-b border-border/50 last:border-0',
                 index === 0 && 'rounded-t-none'
@@ -79,7 +67,7 @@ export function SearchResultsDropdown({ results, isLoading, query, onClose }: Se
                 {item.poster_path ? (
                   <img
                     src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
-                    alt={item.title || item.name}
+                    alt={item.title}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
@@ -95,7 +83,10 @@ export function SearchResultsDropdown({ results, isLoading, query, onClose }: Se
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-fg truncate">{item.title || item.name}</p>
+                <p className="text-sm font-medium text-fg truncate">{item.title}</p>
+                {item.original_title && item.original_title !== item.title && (
+                  <p className="text-xs text-fg-subtle truncate">{item.original_title}</p>
+                )}
                 <div className="flex items-center gap-2 mt-0.5 text-xs text-fg-subtle">
                   <span className="flex items-center gap-1">
                     {item.media_type === 'movie' ? <Film className="h-3 w-3" /> : <Tv className="h-3 w-3" />}

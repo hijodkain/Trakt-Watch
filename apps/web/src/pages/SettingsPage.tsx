@@ -1,32 +1,84 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Container, SectionHeader } from '@trak-watch/ui/components/layout';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, Input, Switch, Avatar, AvatarImage, AvatarFallback } from '@trak-watch/ui';
-import { supabase } from '@/features/auth/AuthProvider';
-import { useAuth } from '@/features/auth/AuthProvider';
-import { User, Moon, Sun, Bell, Globe, Shield, Palette, Camera, Save, Loader2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@trak-watch/ui/components/primitives/Card';
+import { Button } from '@trak-watch/ui/components/primitives/Button';
+import { Input } from '@trak-watch/ui/components/primitives/Input';
+import { Switch } from '@trak-watch/ui/components/primitives/Switch';
+import { useLists } from '@/features/lists/store';
+import { User, Palette, Bell, Shield, Globe } from 'lucide-react';
+import { useToast } from '@trak-watch/ui/components/primitives/useToast';
+
+type Tab = 'account' | 'appearance' | 'notifications' | 'stremio' | 'data';
+
+function useSetting<T>(key: string, initial: T): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = localStorage.getItem(`trakwatch:settings:${key}`);
+      return raw ? (JSON.parse(raw) as T) : initial;
+    } catch {
+      return initial;
+    }
+  });
+  return [
+    value,
+    (v: T) => {
+      setValue(v);
+      try {
+        localStorage.setItem(`trakwatch:settings:${key}`, JSON.stringify(v));
+      } catch {
+        // ignorar
+      }
+    },
+  ];
+}
 
 export function SettingsPage() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'account' | 'appearance' | 'notifications' | 'stremio' | 'data'>('account');
-  const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('account');
+  const { exportJson, importJson } = useLists();
+  const { toast } = useToast();
+  const [displayName, setDisplayName] = useSetting('displayName', 'Mi colección');
+  const [theme, setTheme] = useSetting<'dark' | 'light'>('theme', 'dark');
+  const [notifyNew, setNotifyNew] = useSetting('notifyNew', false);
+  const [notifyReco, setNotifyReco] = useSetting('notifyReco', false);
 
-  const tabs: Array<{ id: 'account' | 'appearance' | 'notifications' | 'stremio' | 'data'; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'account', label: 'Cuenta', icon: User },
-    { id: 'appearance', label: 'Apariencia', icon: Palette },
-    { id: 'notifications', label: 'Notificaciones', icon: Bell },
-    { id: 'stremio', label: 'Stremio', icon: Shield },
-    { id: 'data', label: 'Datos', icon: Globe },
+  const tabs = [
+    { id: 'account' as Tab, label: 'Cuenta', icon: User },
+    { id: 'appearance' as Tab, label: 'Apariencia', icon: Palette },
+    { id: 'notifications' as Tab, label: 'Notificaciones', icon: Bell },
+    { id: 'stremio' as Tab, label: 'Stremio', icon: Shield },
+    { id: 'data' as Tab, label: 'Datos', icon: Globe },
   ];
+
+  const handleExport = () => {
+    const blob = new Blob([exportJson()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trak-watch-listas-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const { imported, errors } = importJson(await file.text());
+    if (errors.length > 0) {
+      toast({ title: 'Importación parcial', description: errors[0], variant: 'warning' });
+    } else {
+      toast({ title: 'Importado', description: `${imported} elementos importados`, variant: 'success' });
+    }
+    e.target.value = '';
+  };
 
   return (
     <div className="min-h-screen">
       <main className="py-8">
         <Container className="max-w-3xl">
-          <SectionHeader title="Ajustes" description="Configura tu experiencia en Trak Watch" />
-          
-          {/* Tab Navigation */}
+          <SectionHeader title="Ajustes" description="Configuración local de Trak Watch" />
+
           <div className="flex flex-wrap gap-2 mb-8 border-b border-border pb-4">
             {tabs.map((tab) => (
               <button
@@ -44,173 +96,118 @@ export function SettingsPage() {
             ))}
           </div>
 
-          {/* Account Tab */}
           {activeTab === 'account' && (
             <Card>
               <CardHeader>
-                <CardTitle>Cuenta</CardTitle>
-                <CardDescription>Gestiona tu información personal</CardDescription>
+                <CardTitle>Cuenta local</CardTitle>
+                <CardDescription>Sin login por ahora: todo se guarda en este navegador</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center gap-6">
-                  <Avatar className="h-20 w-20">
-                    <AvatarImage src={user?.user_metadata?.avatar_url || ''} alt={user?.user_metadata?.full_name || ''} />
-                    <AvatarFallback className="text-2xl">{user?.user_metadata?.full_name?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-medium text-fg">Foto de perfil</h3>
-                    <p className="text-sm text-fg-muted">Arrastra una imagen o haz clic para subir</p>
-                    <Button variant="secondary" className="mt-2 gap-2">
-                      <Camera className="h-4 w-4" />
-                      Cambiar foto
-                    </Button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input label="Nombre completo" value={user?.user_metadata?.full_name || ''} placeholder="Tu nombre" />
-                  <Input label="Nombre de usuario" value={user?.user_metadata?.username || ''} placeholder="@usuario" />
-                </div>
-                <Input label="Email" type="email" value={user?.email || ''} disabled />
-                <Button onClick={() => setSaving(true)} loading={saving} className="gap-2">
-                  <Save className="h-4 w-4" />
-                  Guardar cambios
-                </Button>
+              <CardContent>
+                <Input
+                  label="Nombre de tu colección"
+                  value={displayName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
+                  maxLength={60}
+                />
               </CardContent>
             </Card>
           )}
 
-          {/* Appearance Tab */}
           {activeTab === 'appearance' && (
             <Card>
               <CardHeader>
                 <CardTitle>Apariencia</CardTitle>
-                <CardDescription>Personaliza cómo se ve Trak Watch</CardDescription>
+                <CardDescription>Tema de la app</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-fg mb-3">Tema</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {['light', 'dark', 'system'].map((theme) => (
-                      <button
-                        key={theme}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          theme === 'dark' ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/50'
-                        }`}
-                      >
-                        <div className="text-center">
-                          {theme === 'light' && <Sun className="h-8 w-8 mx-auto mb-2 text-yellow-400" />}
-                          {theme === 'dark' && <Moon className="h-8 w-8 mx-auto mb-2 text-blue-400" />}
-                          {theme === 'system' && <Globe className="h-8 w-8 mx-auto mb-2 text-purple-400" />}
-                          <p className="text-sm font-medium capitalize">{theme}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['dark', 'light'] as const).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTheme(t)}
+                      className={`p-4 rounded-lg border-2 transition-all capitalize ${
+                        theme === t ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/50'
+                      }`}
+                    >
+                      {t === 'dark' ? 'Oscuro' : 'Claro'}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-fg mb-3">Idioma</label>
-                  <select className="w-full px-4 py-2.5 text-sm text-fg bg-bg-elevated border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                    <option value="es">Español</option>
-                    <option value="en">English</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-fg mb-3">Tamaño de pósters</label>
-                  <select className="w-full px-4 py-2.5 text-sm text-fg bg-bg-elevated border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                    <option value="small">Pequeño</option>
-                    <option value="medium">Mediano</option>
-                    <option value="large">Grande</option>
-                  </select>
-                </div>
+                <p className="text-xs text-fg-subtle mt-3">El tema claro completo llegará más adelante; hoy manda el modo oscuro.</p>
               </CardContent>
             </Card>
           )}
 
-          {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <Card>
               <CardHeader>
                 <CardTitle>Notificaciones</CardTitle>
-                <CardDescription>Configura qué notificaciones recibes</CardDescription>
+                <CardDescription>Preferencias locales (sin servidor todavía)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {[
-                  { id: 'new_episodes', label: 'Nuevos episodios', desc: 'Avisarme cuando salga un nuevo episodio de mis series' },
-                  { id: 'recommendations', label: 'Recomendaciones', desc: 'Recibir sugerencias personalizadas semanalmente' },
-                  { id: 'social', label: 'Actividad social', desc: 'Notificaciones cuando alguien sigue mis listas' },
-                  { id: 'marketing', label: 'Novedades', desc: 'Emails sobre nuevas funciones y actualizaciones' },
-                ].map((item) => (
-                  <div key={item.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-fg">{item.label}</p>
-                      <p className="text-sm text-fg-muted">{item.desc}</p>
-                    </div>
-                    <Switch checked={true} onCheckedChange={() => {}} />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-fg">Nuevos episodios</p>
+                    <p className="text-sm text-fg-muted">Avisar de novedades de mis series</p>
                   </div>
-                ))}
+                  <Switch checked={notifyNew} onCheckedChange={setNotifyNew} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-fg">Recomendaciones</p>
+                    <p className="text-sm text-fg-muted">Sugerencias semanales</p>
+                  </div>
+                  <Switch checked={notifyReco} onCheckedChange={setNotifyReco} />
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Stremio Tab */}
           {activeTab === 'stremio' && (
             <Card>
               <CardHeader>
                 <CardTitle>Stremio</CardTitle>
-                <CardDescription>Conecta tus listas con Stremio</CardDescription>
+                <CardDescription>El addon llegará después; la app ya deja todo sync-ready</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="p-4 bg-bg-elevated rounded-lg border border-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-fg">Plugin de Stremio</p>
-                      <p className="text-sm text-fg-muted">Sincroniza tus listas con el addon de Stremio</p>
-                    </div>
-                    <span className="px-3 py-1 text-sm font-medium bg-green-500/20 text-green-400 border border-green-500/30 rounded-full">Conectado</span>
-                  </div>
-                </div>
-                <Button variant="secondary" className="w-full gap-2" asChild>
-                  <a href="/stremio">Gestionar conexión</a>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-fg-muted">
+                  Cada elemento guarda <code className="bg-bg px-1 rounded text-xs">tmdb_id + imdb_id + media_type</code> y
+                  cada cambio de estado queda registrado para sincronizar.
+                </p>
+                <Button variant="secondary" asChild>
+                  <a href="/lists">Ver mis listas</a>
                 </Button>
               </CardContent>
             </Card>
           )}
 
-          {/* Data Tab */}
           {activeTab === 'data' && (
             <Card>
               <CardHeader>
                 <CardTitle>Datos</CardTitle>
-                <CardDescription>Exporta o importa tus datos</CardDescription>
+                <CardDescription>Exporta o importa tus listas en JSON</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button variant="secondary" className="gap-2 h-auto py-4" asChild>
-                    <a href="/profile/export">
-                      <Download className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Exportar datos</p>
-                        <p className="text-xs text-fg-muted">Descargar JSON con tus listas</p>
-                      </div>
-                    </a>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={handleExport}>
+                    Exportar JSON
                   </Button>
-                  <Button variant="secondary" className="gap-2 h-auto py-4" asChild>
-                    <a href="/profile/import">
-                      <Upload className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Importar datos</p>
-                        <p className="text-xs text-fg-muted">Subir JSON o CSV de Trakt</p>
-                      </div>
-                    </a>
-                  </Button>
+                  <label className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-fg bg-bg-elevated border border-border rounded-lg hover:bg-bg-card cursor-pointer">
+                    Importar JSON
+                    <input type="file" accept="application/json" className="hidden" onChange={handleImportFile} />
+                  </label>
                 </div>
-                <div className="border-t border-border pt-4">
-                  <Button variant="destructive" className="w-full gap-2">
-                    <Trash2 className="h-4 w-4" />
-                    Eliminar cuenta
-                  </Button>
-                  <p className="text-xs text-fg-muted text-center mt-2">Esta acción no se puede deshacer. Se eliminarán todos tus datos permanentemente.</p>
-                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (window.confirm('¿Borrar todas las listas locales?')) {
+                      localStorage.removeItem('trakwatch:lists:v1');
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  Borrar datos locales
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -219,5 +216,3 @@ export function SettingsPage() {
     </div>
   );
 }
-
-import { Download, Upload, Trash2 } from 'lucide-react';

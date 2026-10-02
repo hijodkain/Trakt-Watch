@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Menu, X, User, Settings, List, Heart, Eye, LogOut, Plus, ChevronDown } from 'lucide-react';
 import { cn } from '@trak-watch/ui/utils';
 import { Button } from '@trak-watch/ui/components/primitives/Button';
@@ -19,10 +19,12 @@ interface LayoutProps {
 
 export function Layout({ showHeader = true }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { results, isLoading, search, clearSearch } = useGlobalSearch();
 
@@ -31,6 +33,14 @@ export function Layout({ showHeader = true }: LayoutProps) {
       searchInputRef.current.focus();
     }
   }, [searchOpen]);
+
+  useEffect(() => {
+    // Al cambiar de página se limpia la búsqueda global
+    setSearchOpen(false);
+    setSearchText('');
+    clearSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const navigation = [
     { path: '/', label: 'Inicio', icon: HomeIcon },
@@ -41,6 +51,7 @@ export function Layout({ showHeader = true }: LayoutProps) {
   ];
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value);
     search(e.target.value);
   };
 
@@ -55,7 +66,12 @@ export function Layout({ showHeader = true }: LayoutProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setSearchOpen(false);
+      setSearchText('');
       clearSearch();
+    }
+    if (e.key === 'Enter' && searchText.trim().length >= 2) {
+      setSearchOpen(false);
+      navigate(`/search?q=${encodeURIComponent(searchText.trim())}`);
     }
   };
 
@@ -144,7 +160,7 @@ export function Layout({ showHeader = true }: LayoutProps) {
                       type="search"
                       placeholder="Buscar películas, series..."
                       className="pl-10 pr-10 h-10 bg-bg-elevated border-border focus:ring-accent"
-                      value={searchOpen ? '' : ''}
+                      value={searchText}
                       onChange={handleSearchChange}
                       onFocus={handleSearchFocus}
                       onBlur={handleSearchBlur}
@@ -156,8 +172,8 @@ export function Layout({ showHeader = true }: LayoutProps) {
                       <SearchResultsDropdown
                         results={results}
                         isLoading={isLoading}
-                        query={location.search.replace('?q=', '')}
-                        onClose={() => { setSearchOpen(false); clearSearch(); }}
+                        query={searchText}
+                        onClose={() => { setSearchOpen(false); setSearchText(''); clearSearch(); }}
                       />
                     )}
                   </div>

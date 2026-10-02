@@ -1,171 +1,111 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate, NavLink } from 'react-router-dom';
 import { Container, SectionHeader } from '@trak-watch/ui/components/layout';
-import { PosterGrid, Skeleton } from '@trak-watch/ui/components/media';
+import { PosterGrid } from '@trak-watch/ui/components/media';
 import { Button } from '@trak-watch/ui/components/primitives/Button';
 import { Input } from '@trak-watch/ui/components/primitives/Input';
 import { Badge } from '@trak-watch/ui/components/primitives/Badge';
-import { supabase } from '@/features/auth/AuthProvider';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, Eye, Check, Heart, X, ArrowUpDown, Film, Tv, Star } from 'lucide-react';
+import { useLists, type ListFilters } from '@/features/lists/store';
+import { getGenres } from '@/lib/tmdb';
+import type { Genre, ItemStatus, ListItem, MediaSummary } from '@/types';
+import { Edit, Check, X, Plus, Trash2, Star } from 'lucide-react';
 
-interface List {
-  id: string;
-  name: string;
-  description: string | null;
-  type: string;
-  is_public: boolean;
-  sort_order: number;
-}
+const STATUS_LABELS: Record<ItemStatus, string> = {
+  pendientes: 'Pendiente',
+  favoritas: 'Favorita',
+  siguiendo: 'Siguiendo',
+  'seguir-viendo': 'Seguir viendo',
+  vistas: 'Vista',
+};
 
-interface ListItem {
-  id: string;
-  list_id: string;
-  tmdb_id: number;
-  imdb_id: string | null;
-  media_type: 'movie' | 'tv';
-  status: string;
-  rating: number | null;
-  notes: string | null;
-  added_at: string;
-  watched_at: string | null;
-  sort_order: number;
-  title?: string;
-  release_date?: string | null;
-  first_air_date?: string | null;
-}
-
-async function fetchList(id: string) {
-  const { data, error } = await supabase.functions.invoke('lists-get-one', { body: { id } });
-  if (error) throw error;
-  return data?.list;
-}
-
-async function fetchListItems(listId: string) {
-  const { data, error } = await supabase.functions.invoke('list-items-get', { body: { list_id: listId } });
-  if (error) throw error;
-  return data?.items || [];
-}
-
-async function updateItem(itemId: string, input: Partial<ListItem>) {
-  const { data, error } = await supabase.functions.invoke('list-items-update', { body: { id: itemId, ...input } });
-  if (error) throw error;
-  return data?.item;
-}
-
-async function removeItem(itemId: string) {
-  const { error } = await supabase.functions.invoke('list-items-delete', { body: { id: itemId } });
-  if (error) throw error;
-}
-
-async function reorderItems(listId: string, itemIds: string[]) {
-  const { error } = await supabase.functions.invoke('list-items-reorder', { body: { list_id: listId, item_ids: itemIds } });
-  if (error) throw error;
+function toSummary(item: ListItem): MediaSummary {
+  return {
+    tmdb_id: item.tmdb_id,
+    imdb_id: item.imdb_id,
+    media_type: item.media_type,
+    title: item.title || `TMDB ${item.tmdb_id}`,
+    original_title: item.original_title || item.title || '',
+    overview: item.overview || null,
+    poster_path: item.poster_path || null,
+    backdrop_path: item.backdrop_path || null,
+    release_date: item.release_date || null,
+    first_air_date: item.first_air_date || null,
+    vote_average: item.vote_average || 0,
+    vote_count: 0,
+    genre_ids: item.genre_ids || [],
+    genres: item.genres,
+    runtime: null,
+    episode_run_time: null,
+    number_of_seasons: null,
+    number_of_episodes: null,
+    status: item.status,
+    tagline: null,
+  };
 }
 
 export function ListDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const { lists, items, renameList, updateItem, removeItem } = useLists();
+
+  const list = lists.find((l) => l.id === id);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [editPublic, setEditPublic] = useState(false);
-  const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
-  const isNew = id === 'new';
-  const listId = isNew ? null : id;
+  const [filters, setFilters] = useState<ListFilters>({ mediaType: 'all' });
+  const [genres, setGenres] = useState<Genre[]>([]);
 
-  const { data: list, isLoading: listLoading } = useQuery({
-    queryKey: ['lists', id],
-    queryFn: () => fetchList(id!),
-    enabled: !isNew,
-  });
-
-  const { data: items, isLoading: itemsLoading } = useQuery({
-    queryKey: ['lists', id, 'items'],
-    queryFn: () => fetchListItems(id!),
-    enabled: !isNew,
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ itemId, input }: { itemId: string; input: Partial<ListItem> }) => updateItem(itemId, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lists', id, 'items'] });
-    },
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: removeItem,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lists', id, 'items'] });
-    },
-  });
-
-  const reorderMutation = useMutation({
-    mutationFn: (itemIds: string[]) => reorderItems(id!, itemIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lists', id, 'items'] });
-    },
-  });
-
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    setDraggedItem(itemId);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!draggedItem || draggedItem === targetId) return;
-    
-    const itemIds = (items || []).map((item: ListItem) => item.id);
-    const fromIndex = itemIds.indexOf(draggedItem);
-    const toIndex = itemIds.indexOf(targetId);
-    
-    if (fromIndex === -1 || toIndex === -1) return;
-    
-    const newIds = [...itemIds];
-    newIds.splice(fromIndex, 1);
-    newIds.splice(toIndex, 0, draggedItem);
-    
-    reorderMutation.mutate(newIds);
-    setDraggedItem(null);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-  };
-
-  if (isNew) {
-    return (
-      <div className="min-h-screen">
-        <main className="py-8">
-          <Container className="max-w-2xl">
-            <SectionHeader title="Crear nueva lista" />
-            <div className="text-center py-16">
-              <p className="text-fg-muted mb-6">Página de creación de lista en desarrollo</p>
-              <Button onClick={() => navigate('/lists')}>Volver a listas</Button>
-            </div>
-          </Container>
-        </main>
-      </div>
+  useEffect(() => {
+    let alive = true;
+    Promise.all([getGenres('movie').catch(() => [] as Genre[]), getGenres('tv').catch(() => [] as Genre[])]).then(
+      ([gm, gt]) => {
+        if (!alive) return;
+        const seen = new Map<number, Genre>();
+        for (const g of [...gm, ...gt]) if (!seen.has(g.id)) seen.set(g.id, g);
+        setGenres([...seen.values()].sort((a, b) => a.name.localeCompare(b.name, 'es')));
+      }
     );
-  }
+    return () => {
+      alive = false;
+    };
+  }, []);
 
-  if (listLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <div className="animate-spin rounded-full h-12 w-12 border-3 border-accent border-t-transparent" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (list && !editing) {
+      setEditName(list.name);
+      setEditDescription(list.description || '');
+    }
+  }, [list?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const listItems = useMemo(
+    () => items.filter((i) => i.list_id === list?.id).sort((a, b) => a.sort_order - b.sort_order),
+    [items, list?.id]
+  );
+
+  const filtered = useMemo(() => {
+    if (!list) return [];
+    const { filteredItems } = useLists.getState();
+    // Si la lista trae presets y el usuario no filtró, se aplican los presets.
+    const effective: ListFilters = {
+      ...filters,
+      providers:
+        filters.providers && filters.providers.length > 0
+          ? filters.providers
+          : list.presetProviders && list.presetProviders.length > 0
+            ? list.presetProviders
+            : filters.providers,
+      genres:
+        filters.genres && filters.genres.length > 0
+          ? filters.genres
+          : list.presetGenres && list.presetGenres.length > 0
+            ? list.presetGenres
+            : filters.genres,
+    };
+    return filteredItems(list.id, effective);
+  }, [list, items, filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!list) {
     return (
@@ -178,49 +118,23 @@ export function ListDetailPage() {
     );
   }
 
-  const statusLabels: Record<string, string> = {
-    to_watch: 'Por ver',
-    watching: 'Viendo',
-    watched: 'Vista',
-    dropped: 'Abandonada',
-  };
-
-  const statusColors: Record<string, 'default' | 'success' | 'warning' | 'destructive' | 'outline'> = {
-    to_watch: 'default',
-    watching: 'success',
-    watched: 'outline',
-    dropped: 'destructive',
-  };
+  const summaries = filtered.map(toSummary);
 
   return (
     <div className="min-h-screen">
-      {/* List Header */}
-      <header className="relative h-64 lg:h-80 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-bg/90 via-bg/20 to-transparent z-10" />
-        {list.type !== 'custom' && (
-          <div className="absolute top-4 left-4 z-20">
-            <Badge variant="default" className="text-lg px-3 py-1">
-              {list.type === 'watchlist' && <Eye className="h-4 w-4 mr-1" />} 
-              {list.type === 'watched' && <Check className="h-4 w-4 mr-1" />}
-              {list.type === 'favorites' && <Heart className="h-4 w-4 mr-1" />}
-              {list.type === 'watchlist' ? 'Por ver' : list.type === 'watched' ? 'Vistas' : 'Favoritas'}
-            </Badge>
-          </div>
-        )}
-        {list.is_public && (
-          <div className="absolute top-4 right-4 z-20">
-            <Badge variant="outline">Pública</Badge>
-          </div>
-        )}
-      </header>
-
-      <main className="py-8 -mt-16 lg:-mt-20 pb-16 relative z-20">
+      <main className="py-8 pb-16">
         <Container>
-          {/* List Info */}
           <div className="flex flex-col lg:flex-row gap-8 mb-8">
             <div className="flex-1">
               {editing ? (
-                <form onSubmit={(e) => { e.preventDefault(); setEditing(false); }} className="space-y-4">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    renameList(list.id, { name: editName, description: editDescription });
+                    setEditing(false);
+                  }}
+                  className="space-y-4"
+                >
                   <Input
                     label="Nombre"
                     value={editName}
@@ -232,21 +146,12 @@ export function ListDetailPage() {
                     value={editDescription}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDescription(e.target.value)}
                   />
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editPublic}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditPublic(e.target.checked)}
-                      className="rounded border-border text-accent focus:ring-accent"
-                    />
-                    <span className="text-sm text-fg">Lista pública</span>
-                  </label>
                   <div className="flex gap-2">
                     <Button type="submit" className="gap-2">
                       <Check className="h-4 w-4" />
                       Guardar
                     </Button>
-                    <Button variant="secondary" type="button" onClick={() => { setEditing(false); setEditName(list.name); setEditDescription(list.description || ''); setEditPublic(list.is_public); }}>
+                    <Button variant="secondary" type="button" onClick={() => setEditing(false)}>
                       <X className="h-4 w-4" />
                       Cancelar
                     </Button>
@@ -254,92 +159,207 @@ export function ListDetailPage() {
                 </form>
               ) : (
                 <>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 gap-4">
                     <h1 className="text-3xl font-bold text-fg">{list.name}</h1>
-                    <Button variant="secondary" onClick={() => { setEditing(true); setEditName(list.name); setEditDescription(list.description || ''); setEditPublic(list.is_public); }}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setEditing(true);
+                        setEditName(list.name);
+                        setEditDescription(list.description || '');
+                      }}
+                    >
                       <Edit className="h-4 w-4 mr-2" />
                       Editar
                     </Button>
                   </div>
                   {list.description && <p className="text-fg-muted mb-4">{list.description}</p>}
                   <div className="flex flex-wrap items-center gap-3 text-sm text-fg-muted">
-                    <span className="flex items-center gap-1">
-                      {list.type === 'watchlist' && <Eye className="h-4 w-4" />}
-                      {list.type === 'watched' && <Check className="h-4 w-4" />}
-                      {list.type === 'favorites' && <Heart className="h-4 w-4" />}
-                      {list.type === 'custom' && <Film className="h-4 w-4" />}
-                      {list.type === 'watchlist' ? 'Por ver' : list.type === 'watched' ? 'Vistas' : list.type === 'favorites' ? 'Favoritas' : 'Personalizada'}
-                    </span>
-                    {list.is_public && <Badge variant="secondary">Pública</Badge>}
-                    <span>{items?.length || 0} elementos</span>
-                    <span>Creada: {new Date(list.created_at).toLocaleDateString('es-ES')}</span>
+                    <span>{filtered.length} elementos</span>
+                    {list.presetProviders && <Badge variant="secondary">{list.presetProviders[0]}</Badge>}
+                    {list.media !== 'mixed' && (
+                      <Badge variant="secondary">{list.media === 'movie' ? 'Películas' : 'Series'}</Badge>
+                    )}
                   </div>
                 </>
               )}
             </div>
             <div className="flex flex-col gap-2 lg:w-64">
               <Button variant="secondary" className="gap-2 justify-center" asChild>
-                <a href={`/search?list=${list.id}`}>
+                <NavLink to={`/search?list=${list.id}`}>
                   <Plus className="h-4 w-4" />
                   Añadir contenido
-                </a>
+                </NavLink>
               </Button>
-              {list.type === 'custom' && (
-                <Button variant="secondary" className="gap-2 justify-center">
-                  <ArrowUpDown className="h-4 w-4" />
-                  Reordenar
-                </Button>
-              )}
             </div>
           </div>
 
-          {/* Items Grid */}
+          <div className="mb-6 p-4 rounded-xl bg-bg-elevated border border-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <Input
+              label="Texto"
+              placeholder="Filtrar por título..."
+              value={filters.text || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters((f) => ({ ...f, text: e.target.value }))}
+            />
+            <div>
+              <label className="block text-sm font-medium text-fg mb-1.5">Tipo</label>
+              <select
+                value={filters.mediaType || 'all'}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setFilters((f) => ({ ...f, mediaType: e.target.value as ListFilters['mediaType'] }))
+                }
+                className="w-full px-4 py-2.5 text-sm text-fg bg-bg border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="all">Pelis y series</option>
+                <option value="movie">Películas</option>
+                <option value="tv">Series</option>
+              </select>
+            </div>
+            <Input
+              label="Proveedor"
+              placeholder="Ej: Netflix, Max..."
+              value={(filters.providers || []).join(', ')}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFilters((f) => ({
+                  ...f,
+                  providers: e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                }))
+              }
+            />
+            <div>
+              <label className="block text-sm font-medium text-fg mb-1.5">Género</label>
+              <select
+                value={filters.genres?.[0] || ''}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setFilters((f) => ({
+                    ...f,
+                    genres: e.target.value ? [parseInt(e.target.value)] : [],
+                  }))
+                }
+                className="w-full px-4 py-2.5 text-sm text-fg bg-bg border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="">Todos</option>
+                {genres.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Input
+              label="Año desde"
+              type="number"
+              placeholder="1990"
+              value={filters.yearFrom || ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFilters((f) => ({ ...f, yearFrom: e.target.value ? parseInt(e.target.value) : null }))
+              }
+            />
+            <Input
+              label="Nota mínima"
+              type="number"
+              min={0}
+              max={10}
+              step={0.5}
+              placeholder="7"
+              value={filters.minRating ?? ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFilters((f) => ({ ...f, minRating: e.target.value ? parseFloat(e.target.value) : null }))
+              }
+            />
+          </div>
+
           <div className="mt-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-fg">Contenido ({items?.length || 0})</h2>
-              <div className="flex items-center gap-2">
-                <select className="px-3 py-1.5 text-sm bg-bg-elevated border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent">
-                  <option value="added_at">Orden: Añadidos</option>
-                  <option value="title">Título</option>
-                  <option value="rating">Rating</option>
-                  <option value="release_date">Fecha estreno</option>
-                </select>
-              </div>
+              <h2 className="text-xl font-bold text-fg">Contenido ({filtered.length})</h2>
             </div>
 
-            {itemsLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-3 gap-y-6">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <Skeleton key={i} variant="poster" />
-                ))}
-              </div>
-            ) : items && items.length > 0 ? (
-              <PosterGrid
-                items={items.map((item: ListItem) => ({
-                  tmdb_id: item.tmdb_id,
-                  imdb_id: item.imdb_id,
-                  media_type: item.media_type,
-                  title: item.title || '', // Would need to fetch from TMDB
-                  poster_path: null,
-                  release_date: item.release_date,
-                  first_air_date: item.first_air_date,
-                  vote_average: 0,
-                  genre_ids: [],
-                }))}
-                size="md"
-                columns={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }}
-              />
+            {filtered.length > 0 ? (
+              <>
+                <PosterGrid
+                  items={summaries}
+                  size="md"
+                  columns={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }}
+                />
+                <div className="mt-8 space-y-2">
+                  <h3 className="text-lg font-bold text-fg">Gestionar</h3>
+                  {filtered.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl bg-bg-elevated border border-border"
+                    >
+                      <NavLink
+                        to={`/media/${item.media_type}/${item.tmdb_id}`}
+                        className="font-medium text-fg hover:text-accent truncate flex-1"
+                      >
+                        {item.title || `TMDB ${item.tmdb_id}`}
+                      </NavLink>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={item.status}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                            updateItem(item.id, { status: e.target.value as ItemStatus })
+                          }
+                          className="px-3 py-1.5 text-sm bg-bg border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                          aria-label="Estado"
+                        >
+                          {(Object.keys(STATUS_LABELS) as ItemStatus[]).map((s) => (
+                            <option key={s} value={s}>
+                              {STATUS_LABELS[s]}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={item.rating || ''}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                            updateItem(item.id, { rating: e.target.value ? parseInt(e.target.value) : null })
+                          }
+                          className="px-3 py-1.5 text-sm bg-bg border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                          aria-label="Nota"
+                        >
+                          <option value="">Sin nota</option>
+                          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                            <option key={n} value={n}>
+                              {n} ★
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-400"
+                          onClick={() => removeItem(item.id)}
+                          aria-label="Quitar de la lista"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">📋</div>
-                <h3 className="text-lg font-medium text-fg mb-2">Esta lista está vacía</h3>
+                <h3 className="text-lg font-medium text-fg mb-2">
+                  {listItems.length === 0 ? 'Esta lista está vacía' : 'Nada coincide con los filtros'}
+                </h3>
                 <p className="text-fg-muted mb-6">Busca películas o series y añádelas a esta lista</p>
                 <Button variant="secondary" asChild>
-                  <a href={`/search?list=${list.id}`}>Buscar contenido</a>
+                  <NavLink to={`/search?list=${list.id}`}>Buscar contenido</NavLink>
                 </Button>
               </div>
             )}
           </div>
+
+          <SectionHeader title="" />
+          <p className="text-xs text-fg-subtle flex items-center gap-1">
+            <Star className="h-3 w-3" /> Consejo: usa los filtros de proveedor, año o género para ver solo lo que buscas sin
+            duplicar listas.
+          </p>
         </Container>
       </main>
     </div>
