@@ -1,13 +1,10 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { User, Session } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
+import { getSupabase, isSupabaseConfigured } from './supabase';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export { supabase, getSupabase, isSupabaseConfigured } from './supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -26,15 +23,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const client = getSupabase();
+    if (!client) {
+      // Modo single-user sin backend: no hay sesión, pero la app debe arrancar.
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    client.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -44,19 +48,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (provider: 'google' | 'github' | 'apple') => {
+    const client = getSupabase();
+    if (!client) throw new Error('Supabase no está configurado.');
     const redirectTo = `${window.location.origin}/auth/callback`;
-    await supabase.auth.signInWithOAuth({
+    await client.auth.signInWithOAuth({
       provider,
       options: { redirectTo },
     });
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await getSupabase()?.auth.signOut();
   };
 
   const refreshSession = async () => {
-    const { data: { session } } = await supabase.auth.refreshSession();
+    const client = getSupabase();
+    if (!client) return;
+    const { data: { session } } = await client.auth.refreshSession();
     setSession(session);
     setUser(session?.user ?? null);
   };
