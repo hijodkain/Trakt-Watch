@@ -9,6 +9,7 @@ import { Input } from '@trak-watch/ui/components/primitives/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@trak-watch/ui/components/primitives/Card';
 import { Toast } from '@trak-watch/ui/components/primitives/Toast';
 import { useToast } from '@trak-watch/ui/components/primitives/useToast';
+import { supabase } from '@/features/auth/AuthProvider';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -224,6 +225,3 @@ export function LoginPage() {
     </div>
   );
 }
-
-// Need to import supabase
-import { supabase } from '@/features/auth/AuthProvider';
